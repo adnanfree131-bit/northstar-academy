@@ -14,6 +14,7 @@ import {
   SignOut,
   CaretRight,
   Notebook,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -46,6 +47,7 @@ const navGroups: {
     items: [
       { href: "/fees", label: "Fees & Payments", icon: CurrencyCircleDollar, roles: ["principal", "accountant"] },
       { href: "/staff", label: "Staff", icon: UsersThree, roles: ["principal"] },
+      { href: "/accounts", label: "Accounts", icon: ShieldCheck, roles: ["principal"] },
     ],
   },
 ];

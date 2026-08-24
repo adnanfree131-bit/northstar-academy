@@ -54,6 +54,9 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       if (!user || user.password_hash !== (await sha256(password))) {
         return json({ error: "Invalid credentials" }, 401);
       }
+      if ((user as { status?: string }).status && (user as { status?: string }).status !== "active") {
+        return json({ error: "Account is disabled. Ask the principal to restore it." }, 403);
+      }
       const token = crypto.randomUUID();
       const expires = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
       await env.DB.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
@@ -676,6 +679,109 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       await env.DB.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('rolled_over', '1')").run();
       await audit(env, "rollover", "academic_year", "2026-27", `promoted ${promoted}, held ${held}`);
       return json({ ok: true, promoted, held, academicYear: "2026-27" });
+    }
+
+    if (path === "/api/users" && request.method === "GET") {
+      const session = await requireRole(request, env, ["principal"]);
+      if (session instanceof Response) return session;
+      const rows = await env.DB.prepare(
+        "SELECT id, email, name, role, student_id, status FROM users ORDER BY role, name"
+      ).all();
+      return json(rows.results || []);
+    }
+
+    if (path === "/api/users" && request.method === "POST") {
+      const session = await requireRole(request, env, ["principal"]);
+      if (session instanceof Response) return session;
+      const body = (await request.json()) as {
+        email: string;
+        name: string;
+        role: string;
+        password?: string;
+        studentId?: string;
+      };
+      const email = (body.email || "").trim().toLowerCase();
+      const role = body.role || "teacher";
+      if (!email || !body.name) return json({ error: "name and email required" }, 400);
+      if (!["principal", "teacher", "accountant", "parent"].includes(role)) {
+        return json({ error: "Invalid role" }, 400);
+      }
+      const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
+      if (existing) return json({ error: "Email already has an account" }, 409);
+      if (role === "parent" && !body.studentId) {
+        return json({ error: "Parent accounts must be linked to a student" }, 400);
+      }
+      const id = `usr-${crypto.randomUUID().slice(0, 8)}`;
+      const password = body.password || "northstar";
+      await env.DB.prepare(
+        "INSERT INTO users (id, email, password_hash, name, role, student_id, status) VALUES (?, ?, ?, ?, ?, ?, 'active')"
+      )
+        .bind(id, email, await sha256(password), body.name, role, body.studentId || null)
+        .run();
+      await audit(env, "create", "user", id, `${email} ${role}`);
+      return json({ id, email, password }, 201);
+    }
+
+    const userMatch = path.match(/^\/api\/users\/([^/]+)$/);
+    if (userMatch && request.method === "POST") {
+      const session = await requireRole(request, env, ["principal"]);
+      if (session instanceof Response) return session;
+      const id = decodeURIComponent(userMatch[1]);
+      const body = (await request.json()) as {
+        name?: string;
+        role?: string;
+        studentId?: string | null;
+        status?: string;
+      };
+      const current = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(id).first<{
+        id: string;
+        role: string;
+        status: string;
+        student_id: string | null;
+        name: string;
+      }>();
+      if (!current) return notFound(path, request.method);
+      const nextStatus = body.status || current.status || "active";
+      const nextRole = body.role || current.role;
+      if (current.role === "principal" && (nextStatus !== "active" || nextRole !== "principal")) {
+        const principals = await env.DB.prepare(
+          "SELECT COUNT(*) AS c FROM users WHERE role = 'principal' AND status = 'active'"
+        ).first<{ c: number }>();
+        if ((principals?.c || 0) <= 1) {
+          return json({ error: "Cannot disable or demote the last principal" }, 409);
+        }
+      }
+      const studentId = body.studentId === undefined ? current.student_id : body.studentId;
+      await env.DB.prepare(
+        "UPDATE users SET name = COALESCE(?, name), role = ?, student_id = ?, status = ? WHERE id = ?"
+      )
+        .bind(body.name || current.name, nextRole, studentId, nextStatus, id)
+        .run();
+      if (nextStatus !== "active") {
+        await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
+      }
+      await audit(env, "update", "user", id, `${nextRole} ${nextStatus}`);
+      const row = await env.DB.prepare(
+        "SELECT id, email, name, role, student_id, status FROM users WHERE id = ?"
+      )
+        .bind(id)
+        .first();
+      return json(row);
+    }
+
+    const pwMatch = path.match(/^\/api\/users\/([^/]+)\/password$/);
+    if (pwMatch && request.method === "POST") {
+      const session = await requireRole(request, env, ["principal"]);
+      if (session instanceof Response) return session;
+      const id = decodeURIComponent(pwMatch[1]);
+      const body = (await request.json()) as { password?: string };
+      const password = body.password || "northstar";
+      await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+        .bind(await sha256(password), id)
+        .run();
+      await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id).run();
+      await audit(env, "reset-password", "user", id, "password reset by principal");
+      return json({ ok: true, password });
     }
 
     return notFound(path, request.method);
