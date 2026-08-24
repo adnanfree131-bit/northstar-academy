@@ -50,7 +50,10 @@ export default function TimetablePage() {
   const [subTeacher, setSubTeacher] = useState("Ms. Fatima Zahra");
 
   async function load() {
-    const q = view === "teacher" ? `/api/timetable?teacher=${encodeURIComponent(selectedTeacher)}` : `/api/timetable?class=${selectedClass}`;
+    const q =
+      view === "teacher"
+        ? `/api/timetable?teacher=${encodeURIComponent(selectedTeacher)}`
+        : `/api/timetable?className=${encodeURIComponent(selectedClass)}`;
     const rows = await apiGet<Slot[]>(q);
     setSlots(rows || []);
     const c = await apiGet<Conflicts>("/api/timetable/conflicts");
