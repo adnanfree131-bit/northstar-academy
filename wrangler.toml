@@ -1,0 +1,14 @@
+name = "northstar-academy"
+compatibility_date = "2026-08-24"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "out"
+
+# Future D1 / R2 bindings (uncomment when ready)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "northstar-db"
+# database_id = ""
+
+# [[r2_buckets]]
+# binding = "DOCUMENTS"
+# bucket_name = "northstar-documents"
