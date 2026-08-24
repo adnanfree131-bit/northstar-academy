@@ -15,8 +15,8 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function notFound() {
-  return json({ error: "Not found" }, 404);
+function notFound(path?: string, method?: string) {
+  return json({ error: "Not found", path, method }, 404);
 }
 
 export async function handleApi(request: Request, env: Env): Promise<Response> {
@@ -592,7 +592,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ ok: true, promoted, held, academicYear: "2026-27" });
     }
 
-    return notFound();
+    return notFound(path, request.method);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
     return json({ error: message }, 500);
