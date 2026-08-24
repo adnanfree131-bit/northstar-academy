@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarCheck,
   Users,
@@ -11,11 +11,12 @@ import {
   CaretLeft,
   CaretRight,
 } from "@phosphor-icons/react";
-import { students } from "@/lib/mock-data";
-import { Badge } from "@/components/ui/Badge";
+import { students as mockStudents } from "@/lib/mock-data";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { apiGet, apiPost } from "@/lib/api";
+import type { Student } from "@/lib/mock-data";
 
 type MarkStatus = "present" | "absent" | "late" | "leave" | "half-day";
 
@@ -41,6 +42,28 @@ export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState("2026-08-24");
   const [marks, setMarks] = useState<Record<string, MarkStatus>>({});
   const [viewMode, setViewMode] = useState<"daily" | "period">("daily");
+  const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGet<Student[]>("/api/students").then((rows) => {
+      if (rows?.length) setStudents(rows);
+    });
+  }, []);
+
+  useEffect(() => {
+    apiGet<{ student_id: string; status: MarkStatus }[]>(
+      `/api/attendance?date=${selectedDate}&class=${selectedClass}&section=${selectedSection}`
+    ).then((rows) => {
+      if (!rows) return;
+      const next: Record<string, MarkStatus> = {};
+      rows.forEach((r) => {
+        next[r.student_id] = r.status;
+      });
+      setMarks(next);
+    });
+  }, [selectedDate, selectedClass, selectedSection]);
 
   const classStudents = useMemo(
     () =>
@@ -81,13 +104,28 @@ export default function AttendancePage() {
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Attendance</h1>
           <p className="mt-1 text-sm text-zinc-500">
             Daily and period-wise attendance with leave tracking and bulk actions
+            {savedMsg ? ` · ${savedMsg}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm">
             Download Report
           </Button>
-          <Button size="sm" disabled={summary.unmarked > 0 && Object.keys(marks).length === 0}>
+          <Button
+            size="sm"
+            loading={saving}
+            onClick={async () => {
+              setSaving(true);
+              const res = await apiPost("/api/attendance", {
+                date: selectedDate,
+                className: selectedClass,
+                section: selectedSection,
+                marks: Object.entries(marks).map(([studentId, status]) => ({ studentId, status })),
+              });
+              setSaving(false);
+              setSavedMsg(res.data ? `Saved ${Object.keys(marks).length} rows to D1` : res.error || "Save failed");
+            }}
+          >
             Save Attendance
           </Button>
         </div>

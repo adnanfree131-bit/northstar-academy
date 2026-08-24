@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   MagnifyingGlass,
   Plus,
@@ -11,12 +11,14 @@ import {
   PencilSimple,
   DotsThree,
 } from "@phosphor-icons/react";
-import { students, type Student, type StudentStatus } from "@/lib/mock-data";
+import { students as mockStudents, type Student, type StudentStatus } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
+import { apiGet } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 const statusFilters: { label: string; value: StudentStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -27,9 +29,21 @@ const statusFilters: { label: string; value: StudentStatus | "all" }[] = [
 ];
 
 export default function StudentsPage() {
+  const { can } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StudentStatus | "all">("all");
   const [classFilter, setClassFilter] = useState<string>("all");
+  const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [live, setLive] = useState(false);
+
+  useEffect(() => {
+    apiGet<Student[]>("/api/students").then((rows) => {
+      if (rows?.length) {
+        setStudents(rows);
+        setLive(true);
+      }
+    });
+  }, []);
 
   const classes = useMemo(() => {
     const set = new Set(students.map((s) => s.className));
@@ -56,6 +70,7 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Students</h1>
           <p className="mt-1 text-sm text-zinc-500">
             Manage student records, admissions, and academic profiles
+            {live ? " · live D1" : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -63,12 +78,14 @@ export default function StudentsPage() {
             <DownloadSimple className="h-4 w-4" />
             Export
           </Button>
-          <Link href="/students/new">
-            <Button size="sm">
-              <Plus className="h-4 w-4" weight="bold" />
-              New Admission
-            </Button>
-          </Link>
+          {can("students.admit") && (
+            <Link href="/students/new">
+              <Button size="sm">
+                <Plus className="h-4 w-4" weight="bold" />
+                New Admission
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 

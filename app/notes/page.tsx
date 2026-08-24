@@ -59,7 +59,7 @@ export default function NotesPage() {
       author: "Sara Malik",
     });
     setSaving(false);
-    if (created) {
+    if (created.data) {
       setTitle("");
       setBody("");
       setConfidential(false);

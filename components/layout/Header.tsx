@@ -2,11 +2,20 @@
 
 import { MagnifyingGlass, Bell, CaretDown } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/lib/auth";
 
 export function Header() {
+  const { user } = useAuth();
+  const initials = (user?.name || "NS")
+    .split(" ")
+    .filter(Boolean)
+    .slice(-2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-100 bg-white/80 px-6 backdrop-blur-xl">
-      {/* Search */}
       <div className="relative w-full max-w-md">
         <MagnifyingGlass className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
         <input
@@ -19,20 +28,19 @@ export function Header() {
         </kbd>
       </div>
 
-      {/* Right actions */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5 text-zinc-500" />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-white" />
         </Button>
 
-        <div className="ml-2 flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50/50 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-zinc-50">
+        <div className="ml-2 flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50/50 py-1.5 pl-1.5 pr-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-xs font-semibold text-white">
-            SM
+            {initials}
           </div>
           <div className="hidden sm:block">
-            <p className="text-xs font-semibold text-zinc-900">Sara Malik</p>
-            <p className="text-[10px] text-zinc-400">Principal</p>
+            <p className="text-xs font-semibold text-zinc-900">{user?.name || "Guest"}</p>
+            <p className="text-[10px] capitalize text-zinc-400">{user?.role}</p>
           </div>
           <CaretDown className="h-3.5 w-3.5 text-zinc-400" />
         </div>

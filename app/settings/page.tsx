@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { apiGet } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { apiGet, apiPost } from "@/lib/api";
 
 type Health = {
   ok: boolean;
@@ -22,13 +23,25 @@ type Audit = {
   created_at: string;
 };
 
+type Preview = {
+  academicYear: string;
+  rolledOver: boolean;
+  eligible: number;
+  blocked: number;
+  students: { id: string; name: string; from: string; to: string; blocked: string[]; eligible: boolean }[];
+};
+
 export default function SettingsPage() {
   const [health, setHealth] = useState<Health | null>(null);
   const [audit, setAudit] = useState<Audit[]>([]);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [rolling, setRolling] = useState(false);
+  const [rollMsg, setRollMsg] = useState<string | null>(null);
 
   useEffect(() => {
     apiGet<Health>("/api/health").then(setHealth);
     apiGet<Audit[]>("/api/audit").then((rows) => setAudit(rows || []));
+    apiGet<Preview>("/api/rollover/preview").then(setPreview);
   }, []);
 
   return (
@@ -54,13 +67,47 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Academic year" />
-          <dl className="space-y-3 text-sm">
-            <Row label="Current year" value="2025-26" ok />
-            <Row label="Rollover" value="Locked until Term 2 results publish" ok={false} />
-            <Row label="Promotion rules" value="Attendance ≥ 80% and no fee hold" ok />
-            <Row label="SEN extra time" value="25% on written papers" ok />
-          </dl>
+          <CardHeader title="Academic year rollover" description="Promote eligible students. Holds stay back." />
+          <p className="text-sm text-zinc-600">
+            Year {preview?.academicYear || "2025-26"} · eligible {preview?.eligible ?? "—"} · blocked{" "}
+            {preview?.blocked ?? "—"}
+          </p>
+          <ul className="mt-3 max-h-48 space-y-1 overflow-auto text-sm">
+            {(preview?.students || []).map((s) => (
+              <li key={s.id} className="flex justify-between gap-3">
+                <span>
+                  {s.name} · {s.from} → {s.to}
+                </span>
+                <span className={s.eligible ? "text-emerald-600" : "text-amber-600"}>
+                  {s.eligible ? "Promote" : s.blocked.join(", ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {rollMsg && <p className="mt-3 text-sm text-emerald-700">{rollMsg}</p>}
+          <div className="mt-4">
+            <Button
+              size="sm"
+              loading={rolling}
+              disabled={preview?.rolledOver}
+              onClick={async () => {
+                setRolling(true);
+                const res = await apiPost<{ promoted: number; held: number; academicYear: string }>("/api/rollover", {
+                  confirm: true,
+                });
+                setRolling(false);
+                if (res.data) {
+                  setRollMsg(`Rolled to ${res.data.academicYear}. Promoted ${res.data.promoted}, held ${res.data.held}.`);
+                  apiGet<Preview>("/api/rollover/preview").then(setPreview);
+                  apiGet<Audit[]>("/api/audit").then((rows) => setAudit(rows || []));
+                } else {
+                  setRollMsg(res.error || "Rollover failed");
+                }
+              }}
+            >
+              {preview?.rolledOver ? "Already rolled over" : "Run rollover to 2026-27"}
+            </Button>
+          </div>
         </Card>
       </div>
 
