@@ -167,10 +167,15 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       const documents = await env.DB.prepare("SELECT * FROM documents WHERE student_id = ?")
         .bind(id)
         .all();
+      const session = await getSession(request, env);
+      let noteRows = notes.results || [];
+      if (session?.user.role === "parent") {
+        noteRows = noteRows.filter((n) => !(n as { confidential: number }).confidential);
+      }
       return json({
         student: mapStudent(s as never, (guardians.results || []).map(mapGuardian)),
         invoices: invoices.results || [],
-        notes: notes.results || [],
+        notes: noteRows,
         documents: documents.results || [],
       });
     }
@@ -223,9 +228,79 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json(
         (exams.results || []).map((e) => ({
           ...e,
-          subjects: byExam[(e as { id: string }).id] || [],
+          className: (e as { class_name: string }).class_name,
+          startDate: (e as { start_date: string }).start_date,
+          endDate: (e as { end_date: string }).end_date,
+          subjects: (byExam[(e as { id: string }).id] || []).map((sub) => {
+            const s = sub as { name: string; max_marks: number; date: string };
+            return { name: s.name, maxMarks: s.max_marks, date: s.date };
+          }),
         }))
       );
+    }
+
+    if (path === "/api/exams" && request.method === "POST") {
+      const session = await requireRole(request, env, ["principal", "teacher"]);
+      if (session instanceof Response) return session;
+      const body = (await request.json()) as {
+        name: string;
+        type?: string;
+        className?: string;
+        startDate: string;
+        endDate: string;
+        subjects?: { name: string; maxMarks: number; date: string }[];
+      };
+      if (!body.name || !body.startDate || !body.endDate) {
+        return json({ error: "name, startDate, endDate required" }, 400);
+      }
+      const id = `ex-${crypto.randomUUID().slice(0, 6)}`;
+      await env.DB.prepare(
+        "INSERT INTO exams (id, name, type, class_name, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, 'upcoming')"
+      )
+        .bind(id, body.name, body.type || "unit", body.className || "All", body.startDate, body.endDate)
+        .run();
+      for (const sub of body.subjects || []) {
+        await env.DB.prepare(
+          "INSERT INTO exam_subjects (exam_id, name, max_marks, date) VALUES (?, ?, ?, ?)"
+        )
+          .bind(id, sub.name, sub.maxMarks || 100, sub.date || body.startDate)
+          .run();
+      }
+      await audit(env, "create", "exam", id, body.name);
+      return json({ id }, 201);
+    }
+
+    if (path === "/api/staff" && request.method === "POST") {
+      const session = await requireRole(request, env, ["principal"]);
+      if (session instanceof Response) return session;
+      const body = (await request.json()) as {
+        name: string;
+        role: string;
+        email: string;
+        phone: string;
+        department?: string;
+        subjects?: string;
+      };
+      if (!body.name || !body.email) return json({ error: "name and email required" }, 400);
+      const id = `stf-${crypto.randomUUID().slice(0, 6)}`;
+      const employeeId = `EMP-${Date.now().toString().slice(-4)}`;
+      await env.DB.prepare(
+        `INSERT INTO staff (id, employee_id, name, role, department, subjects, email, phone, status, joining_date, workload_hours, classes_assigned)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', date('now'), 24, '')`
+      )
+        .bind(
+          id,
+          employeeId,
+          body.name,
+          body.role || "Teacher",
+          body.department || null,
+          body.subjects || null,
+          body.email,
+          body.phone || ""
+        )
+        .run();
+      await audit(env, "create", "staff", id, body.name);
+      return json({ id, employeeId }, 201);
     }
 
     if (path === "/api/notes" && request.method === "GET") {
@@ -236,7 +311,12 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
           ).bind(studentId)
         : env.DB.prepare("SELECT * FROM notes ORDER BY pinned DESC, created_at DESC");
       const rows = await stmt.all();
-      return json(rows.results || []);
+      const session = await getSession(request, env);
+      let list = rows.results || [];
+      if (session?.user.role === "parent") {
+        list = list.filter((n) => !(n as { confidential: number }).confidential);
+      }
+      return json(list);
     }
 
     if (path === "/api/notes" && request.method === "POST") {

@@ -39,7 +39,7 @@ export default function NewAdmissionPage() {
       setError(res.error || "Admission failed");
       return;
     }
-    router.push(`/students/${res.data.student.id}`);
+    router.push(`/students/profile?id=${res.data.student.id}`);
   }
 
   return (

@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import Link from "next/link";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 
 type ExamRow = {
   id: string;
@@ -40,26 +40,37 @@ const statusVariant = {
 export default function ExamsPage() {
   const [exams, setExams] = useState<ExamRow[]>(mockExams as ExamRow[]);
   const [selectedExam, setSelectedExam] = useState(mockExams[0]?.id || "");
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: "Unit Test 4",
+    type: "unit",
+    className: "8",
+    startDate: "2026-09-08",
+    endDate: "2026-09-10",
+  });
+
+  async function loadExams() {
+    const rows = await apiGet<ExamRow[]>("/api/exams");
+    if (rows?.length) {
+      setExams(
+        rows.map((e) => ({
+          ...e,
+          className: e.className || e.class_name || "",
+          startDate: e.startDate || e.start_date || "",
+          endDate: e.endDate || e.end_date || "",
+          subjects: (e.subjects || []).map((s) => ({
+            name: s.name,
+            maxMarks: s.maxMarks ?? s.max_marks ?? 0,
+            date: s.date,
+          })),
+        }))
+      );
+    }
+  }
 
   useEffect(() => {
-    apiGet<ExamRow[]>("/api/exams").then((rows) => {
-      if (rows?.length) {
-        setExams(
-          rows.map((e) => ({
-            ...e,
-            className: e.className || e.class_name || "",
-            startDate: e.startDate || e.start_date || "",
-            endDate: e.endDate || e.end_date || "",
-            subjects: (e.subjects || []).map((s) => ({
-              name: s.name,
-              maxMarks: s.maxMarks ?? s.max_marks ?? 0,
-              date: s.date,
-            })),
-          }))
-        );
-        setSelectedExam(rows[0].id);
-      }
-    });
+    loadExams().then(() => {});
   }, []);
 
   const current = exams.find((e) => e.id === selectedExam) || exams[0];
@@ -78,7 +89,7 @@ export default function ExamsPage() {
               Report cards
             </Button>
           </Link>
-          <Button size="sm">
+          <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" weight="bold" />
             Create Exam
           </Button>
@@ -180,6 +191,66 @@ export default function ExamsPage() {
           )}
         </div>
       </div>
+
+      {creating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold">Create exam</h2>
+            <div className="mt-4 space-y-2">
+              <input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                className="h-10 w-full rounded-xl border px-3 text-sm"
+                placeholder="Name"
+              />
+              <input
+                value={form.className}
+                onChange={(e) => setForm((f) => ({ ...f, className: e.target.value }))}
+                className="h-10 w-full rounded-xl border px-3 text-sm"
+                placeholder="Class"
+              />
+              <input
+                type="date"
+                value={form.startDate}
+                onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                className="h-10 w-full rounded-xl border px-3 text-sm"
+              />
+              <input
+                type="date"
+                value={form.endDate}
+                onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                className="h-10 w-full rounded-xl border px-3 text-sm"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setCreating(false)}>
+                Cancel
+              </Button>
+              <Button
+                loading={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  const res = await apiPost<{ id: string }>("/api/exams", {
+                    ...form,
+                    subjects: [
+                      { name: "English", maxMarks: 50, date: form.startDate },
+                      { name: "Mathematics", maxMarks: 50, date: form.endDate },
+                    ],
+                  });
+                  setSaving(false);
+                  if (res.data) {
+                    setCreating(false);
+                    await loadExams();
+                    setSelectedExam(res.data.id);
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

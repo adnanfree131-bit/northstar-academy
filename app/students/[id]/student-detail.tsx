@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -17,11 +17,12 @@ import {
   Users,
   IdentificationCard,
 } from "@phosphor-icons/react";
-import { students, feeInvoices } from "@/lib/mock-data";
+import { students, feeInvoices, type Student, type FeeInvoice } from "@/lib/mock-data";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { apiGet } from "@/lib/api";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: IdentificationCard },
@@ -35,10 +36,65 @@ const tabs = [
 type TabId = (typeof tabs)[number]["id"];
 
 export function StudentDetail({ id }: { id: string }) {
-  const student = students.find((s) => s.id === id) || students[0];
+  const fallback = students.find((s) => s.id === id);
+  const [student, setStudent] = useState<Student | null>(fallback || null);
+  const [studentInvoices, setStudentInvoices] = useState<FeeInvoice[]>(
+    feeInvoices.filter((i) => i.studentId === id)
+  );
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [live, setLive] = useState(false);
 
-  const studentInvoices = feeInvoices.filter((i) => i.studentId === student.id);
+  useEffect(() => {
+    apiGet<{
+      student: Student;
+      invoices: {
+        id: string;
+        student_id: string;
+        student_name: string;
+        class_name: string;
+        academic_year: string;
+        term: string;
+        total_amount: number;
+        paid_amount: number;
+        due_date: string;
+        status: FeeInvoice["status"];
+        late_fee: number;
+        discount: number;
+        discount_reason?: string;
+      }[];
+    }>(`/api/students/${id}`).then((data) => {
+      if (!data?.student) return;
+      setStudent({
+        ...data.student,
+        siblingIds: data.student.siblingIds || [],
+        guardians: data.student.guardians || [],
+      });
+      setStudentInvoices(
+        (data.invoices || []).map((inv) => ({
+          id: inv.id,
+          studentId: inv.student_id,
+          studentName: inv.student_name,
+          className: inv.class_name,
+          academicYear: inv.academic_year,
+          term: inv.term,
+          components: [],
+          totalAmount: inv.total_amount,
+          paidAmount: inv.paid_amount,
+          dueDate: inv.due_date,
+          status: inv.status,
+          lateFee: inv.late_fee,
+          discount: inv.discount,
+          discountReason: inv.discount_reason,
+        }))
+      );
+      setLive(true);
+    });
+  }, [id]);
+
+  if (!student) {
+    return <p className="text-sm text-zinc-500">Student not found.</p>;
+  }
+
   const primaryGuardian = student.guardians.find((g) => g.isPrimary) || student.guardians[0];
 
   return (
@@ -87,7 +143,7 @@ export function StudentDetail({ id }: { id: string }) {
                 </Badge>
                 {student.isHostel && <Badge variant="info">Hostel</Badge>}
                 {student.specialNeeds && <Badge variant="warning">SEN</Badge>}
-                {student.siblingIds.length > 0 && (
+                {student.siblingIds?.length > 0 && (
                   <Badge variant="accent">{student.siblingIds.length} Sibling(s)</Badge>
                 )}
               </div>
@@ -95,6 +151,7 @@ export function StudentDetail({ id }: { id: string }) {
               <p className="mt-1 text-sm text-zinc-500">
                 {student.admissionNo} · Class {student.className}-{student.section} · Roll{" "}
                 {student.rollNo}
+                {live ? " · D1" : ""}
               </p>
 
               <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-600">

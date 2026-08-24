@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MagnifyingGlass,
   Plus,
@@ -8,20 +8,49 @@ import {
   Phone,
   Briefcase,
 } from "@phosphor-icons/react";
-import { staff, type StaffMember } from "@/lib/mock-data";
+import { staff as mockStaff, type StaffMember } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { apiGet, apiPost } from "@/lib/api";
 
 export default function StaffPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [staff, setStaff] = useState<StaffMember[]>(mockStaff);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    role: "Teacher",
+    email: "",
+    phone: "",
+    department: "",
+    subjects: "",
+  });
 
-  const roles = useMemo(() => {
-    const set = new Set(staff.map((s) => s.role));
-    return Array.from(set);
+  async function load() {
+    const rows = await apiGet<StaffMember[]>("/api/staff");
+    if (rows?.length) {
+      setStaff(
+        rows.map((s) => ({
+          ...s,
+          employeeId: (s as StaffMember).employeeId || (s as { employee_id?: string }).employee_id || "",
+          joiningDate: (s as StaffMember).joiningDate || (s as { joining_date?: string }).joining_date || "",
+          workloadHours: (s as StaffMember).workloadHours ?? (s as { workload_hours?: number }).workload_hours ?? 0,
+          classesAssigned: s.classesAssigned || [],
+          subjects: s.subjects || [],
+        }))
+      );
+    }
+  }
+
+  useEffect(() => {
+    load();
   }, []);
+
+  const roles = useMemo(() => Array.from(new Set(staff.map((s) => s.role))), [staff]);
 
   const filtered = useMemo(() => {
     return staff.filter((s) => {
@@ -32,7 +61,18 @@ export default function StaffPage() {
       const matchesRole = roleFilter === "all" || s.role === roleFilter;
       return matchesSearch && matchesRole;
     });
-  }, [search, roleFilter]);
+  }, [staff, search, roleFilter]);
+
+  async function addStaff() {
+    setSaving(true);
+    const res = await apiPost("/api/staff", form);
+    setSaving(false);
+    if (res.data) {
+      setOpen(false);
+      setForm({ name: "", role: "Teacher", email: "", phone: "", department: "", subjects: "" });
+      await load();
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -43,7 +83,7 @@ export default function StaffPage() {
             Teachers, administration, and support staff with workload and leave tracking
           </p>
         </div>
-        <Button size="sm">
+        <Button size="sm" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" weight="bold" />
           Add Staff Member
         </Button>
@@ -95,6 +135,44 @@ export default function StaffPage() {
         <Card>
           <p className="py-12 text-center text-sm text-zinc-500">No staff members found.</p>
         </Card>
+      )}
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold">Add staff</h2>
+            <div className="mt-4 space-y-2">
+              {(["name", "email", "phone", "department", "subjects"] as const).map((key) => (
+                <input
+                  key={key}
+                  placeholder={key}
+                  value={form[key]}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  className="h-10 w-full rounded-xl border border-zinc-200 px-3 text-sm"
+                />
+              ))}
+              <select
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+                className="h-10 w-full rounded-xl border border-zinc-200 px-3 text-sm"
+              >
+                <option>Teacher</option>
+                <option>Accountant</option>
+                <option>Admin</option>
+                <option>Librarian</option>
+                <option>Support</option>
+              </select>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button loading={saving} onClick={addStaff}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

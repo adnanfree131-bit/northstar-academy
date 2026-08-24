@@ -189,7 +189,7 @@ function StudentRow({ student: s }: { student: Student }) {
           </div>
           <div>
             <Link
-              href={`/students/${s.id}`}
+              href={`/students/profile?id=${s.id}`}
               className="font-medium text-zinc-900 hover:text-blue-600 transition-colors"
             >
               {s.fullName}
@@ -256,7 +256,7 @@ function StudentRow({ student: s }: { student: Student }) {
       </td>
       <td className="px-5 py-4">
         <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <Link href={`/students/${s.id}`}>
+          <Link href={`/students/profile?id=${s.id}`}>
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Eye className="h-4 w-4 text-zinc-500" />
             </Button>
