@@ -217,6 +217,12 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       );
     }
 
+    if (path === "/api/exams") {
+      if (request.method !== "GET" && request.method !== "POST") {
+        return json({ error: "Method not allowed", method: request.method }, 405);
+      }
+    }
+
     if (path === "/api/exams" && request.method === "GET") {
       const exams = await env.DB.prepare("SELECT * FROM exams ORDER BY start_date").all();
       const subjects = await env.DB.prepare("SELECT * FROM exam_subjects").all();
