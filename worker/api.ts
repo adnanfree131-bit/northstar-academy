@@ -784,6 +784,119 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
       return json({ ok: true, password });
     }
 
+    if (path === "/api/timetable" && request.method === "GET") {
+      const className = url.searchParams.get("class");
+      const teacher = url.searchParams.get("teacher");
+      let q = "SELECT * FROM timetable_slots";
+      const binds: string[] = [];
+      if (className) {
+        q += " WHERE class_name = ?";
+        binds.push(className);
+      } else if (teacher) {
+        q += " WHERE teacher = ? OR original_teacher = ?";
+        binds.push(teacher, teacher);
+      }
+      q += " ORDER BY CASE day WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 ELSE 5 END, period";
+      const rows = await env.DB.prepare(q).bind(...binds).all();
+      return json(rows.results || []);
+    }
+
+    if (path === "/api/timetable/conflicts" && request.method === "GET") {
+      const teacherConflicts = await env.DB.prepare(
+        `SELECT day, period, teacher, GROUP_CONCAT(class_name, ', ') AS classes, COUNT(*) AS n
+         FROM timetable_slots
+         WHERE teacher != '—' AND teacher != ''
+         GROUP BY day, period, teacher
+         HAVING n > 1`
+      ).all();
+      const roomConflicts = await env.DB.prepare(
+        `SELECT day, period, room, GROUP_CONCAT(class_name, ', ') AS classes, COUNT(*) AS n
+         FROM timetable_slots
+         WHERE room != '—' AND room != '' AND room != 'Ground' AND room != 'Hall'
+         GROUP BY day, period, room
+         HAVING n > 1`
+      ).all();
+      const subs = await env.DB.prepare(
+        "SELECT COUNT(*) AS c FROM timetable_slots WHERE is_substitution = 1"
+      ).first<{ c: number }>();
+      return json({
+        teacher: teacherConflicts.results || [],
+        room: roomConflicts.results || [],
+        substitutions: subs?.c ?? 0,
+      });
+    }
+
+    if (path === "/api/timetable" && request.method === "POST") {
+      const session = await requireRole(request, env, ["principal", "teacher"]);
+      if (session instanceof Response) return session;
+      const body = (await request.json()) as {
+        className: string;
+        day: string;
+        period: number;
+        subject: string;
+        teacher: string;
+        room: string;
+        startTime?: string;
+        endTime?: string;
+      };
+      if (!body.className || !body.day || !body.period) {
+        return json({ error: "class, day and period required" }, 400);
+      }
+      const id = `tt-${body.className}-${body.day}-${body.period}`.replace(/\s+/g, "").toLowerCase();
+      await env.DB.prepare(
+        `INSERT INTO timetable_slots (id, class_name, day, period, start_time, end_time, subject, teacher, room, is_substitution, original_teacher)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL)
+         ON CONFLICT(class_name, day, period) DO UPDATE SET
+           subject = excluded.subject,
+           teacher = excluded.teacher,
+           room = excluded.room,
+           is_substitution = 0,
+           original_teacher = NULL`
+      )
+        .bind(
+          id,
+          body.className,
+          body.day,
+          body.period,
+          body.startTime || null,
+          body.endTime || null,
+          body.subject,
+          body.teacher,
+          body.room
+        )
+        .run();
+      await audit(env, "upsert", "timetable", id, `${body.className} ${body.day} P${body.period}`);
+      const row = await env.DB.prepare(
+        "SELECT * FROM timetable_slots WHERE class_name = ? AND day = ? AND period = ?"
+      )
+        .bind(body.className, body.day, body.period)
+        .first();
+      return json(row);
+    }
+
+    const subMatch = path.match(/^\/api\/timetable\/([^/]+)\/substitute$/);
+    if (subMatch && request.method === "POST") {
+      const session = await requireRole(request, env, ["principal", "teacher"]);
+      if (session instanceof Response) return session;
+      const id = decodeURIComponent(subMatch[1]);
+      const body = (await request.json()) as { teacher: string };
+      if (!body.teacher) return json({ error: "substitute teacher required" }, 400);
+      const slot = await env.DB.prepare("SELECT * FROM timetable_slots WHERE id = ?").bind(id).first<{
+        teacher: string;
+        original_teacher: string | null;
+      }>();
+      if (!slot) return notFound(path, request.method);
+      const original = slot.original_teacher || slot.teacher;
+      await env.DB.prepare(
+        "UPDATE timetable_slots SET teacher = ?, is_substitution = 1, original_teacher = ? WHERE id = ?"
+      )
+        .bind(body.teacher, original, id)
+        .run();
+      await audit(env, "substitute", "timetable", id, `${original} → ${body.teacher}`);
+      const row = await env.DB.prepare("SELECT * FROM timetable_slots WHERE id = ?").bind(id).first();
+      return json(row);
+    }
+
     return notFound(path, request.method);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
