@@ -785,7 +785,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     }
 
     if (path === "/api/timetable" && request.method === "GET") {
-      const className = url.searchParams.get("class");
+      const className = url.searchParams.get("className") || url.searchParams.get("class");
       const teacher = url.searchParams.get("teacher");
       let q = "SELECT * FROM timetable_slots";
       const binds: string[] = [];
