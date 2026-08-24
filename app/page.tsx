@@ -1,5 +1,7 @@
+"use client";
+
 import {
-  Students,
+  Student,
   CurrencyCircleDollar,
   CalendarCheck,
   Warning,
@@ -46,7 +48,7 @@ export default function DashboardPage() {
           value={dashboardStats.activeStudents.toLocaleString()}
           change={3.2}
           changeLabel="vs last month"
-          icon={<Students className="h-5 w-5" weight="duotone" />}
+          icon={<Student className="h-5 w-5" weight="duotone" />}
           accent="blue"
         />
         <StatCard

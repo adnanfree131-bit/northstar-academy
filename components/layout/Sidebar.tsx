@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import {
   House,
-  Students,
+  Student,
   CurrencyCircleDollar,
   CalendarCheck,
   Exam,
@@ -29,7 +29,7 @@ const navGroups = [
   {
     label: "Academics",
     items: [
-      { href: "/students", label: "Students", icon: Students },
+      { href: "/students", label: "Students", icon: Student },
       { href: "/attendance", label: "Attendance", icon: CalendarCheck },
       { href: "/exams", label: "Exams & Results", icon: Exam },
       { href: "/timetable", label: "Timetable", icon: CalendarBlank },

@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { TrendUp, TrendDown } from "@phosphor-icons/react";
 
