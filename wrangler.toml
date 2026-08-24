@@ -1,8 +1,20 @@
 name = "northstar-academy"
 compatibility_date = "2026-08-24"
 compatibility_flags = ["nodejs_compat"]
+main = "worker/index.ts"
 
 [assets]
 directory = "./out"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "northstar-db"
+database_id = "4c827d72-5a83-4ab6-949e-4ba26b40290b"
+
+# Enable R2 in Cloudflare Dashboard, then uncomment:
+# [[r2_buckets]]
+# binding = "DOCUMENTS"
+# bucket_name = "northstar-documents"

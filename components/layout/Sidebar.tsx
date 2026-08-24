@@ -14,6 +14,7 @@ import {
   Bell,
   SignOut,
   CaretRight,
+  Notebook,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,6 +34,7 @@ const navGroups = [
       { href: "/attendance", label: "Attendance", icon: CalendarCheck },
       { href: "/exams", label: "Exams & Results", icon: Exam },
       { href: "/timetable", label: "Timetable", icon: CalendarBlank },
+      { href: "/notes", label: "Notes", icon: Notebook },
     ],
   },
   {
