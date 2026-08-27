@@ -1,53 +1,72 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-
-  --color-paper: #f3f1eb;
-  --color-card: #fffcf8;
-  --color-ink: #171614;
-  --color-muted: #6f6c64;
-  --color-faint: #9b978c;
-  --color-line: color-mix(in oklab, var(--color-ink) 10%, transparent);
-  --color-pine: #1a3c36;
-  --color-pine-fg: #f3f1eb;
-  --color-pine-soft: #e4ede9;
-  --color-ok: #2f5d3a;
-  --color-ok-soft: #e6efe7;
-  --color-warn: #8a5a22;
-  --color-warn-soft: #f3ead8;
-  --color-danger: #8b3a2a;
-  --color-danger-soft: #f3e3dc;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 22px;
-  --radius-sheet: 20px;
-
-  --shadow-card: 0 0 0 1px color-mix(in oklab, var(--color-ink) 6%, transparent),
-    0 1px 2px color-mix(in oklab, var(--color-ink) 4%, transparent);
-
-  --text-caption: 0.75rem;
-  --text-label: 0.8125rem;
-  --text-body: 0.9375rem;
-  --text-title: 1.375rem;
-  --text-display: 1.75rem;
-
-  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-cream: #f7f1df;
+  --color-cream-deep: #efe4c4;
+  --color-ink: #171717;
+  --color-sun: #f2c94c;
+  --color-sun-deep: #e8b923;
+  --radius-card: 28px;
 }
 
 @layer base {
   html {
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
   body {
-    background: var(--color-paper);
+    background: #e8e4dc;
     color: var(--color-ink);
-    font-family: var(--font-sans);
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  ::selection {
+    background: #f2c94c;
+    color: #171717;
+  }
+}
+
+.ns-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1100px 520px at 82% 6%, rgba(242, 201, 76, 0.5), transparent 58%),
+    radial-gradient(800px 420px at 8% 0%, rgba(255, 252, 245, 0.95), transparent 52%),
+    linear-gradient(180deg, #fbf6ea 0%, #f3ead2 48%, #efe3c2 100%);
+}
+
+.ns-frame {
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: 0 30px 80px rgba(90, 70, 20, 0.12);
+}
+
+.ns-card {
+  background: rgba(255, 252, 246, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 28px rgba(120, 90, 20, 0.05);
+}
+
+.ns-stripe {
+  background-image: repeating-linear-gradient(
+    -52deg,
+    rgba(255, 255, 255, 0.58) 0 8px,
+    rgba(232, 185, 35, 0.3) 8px 16px
+  );
+}
+
+.ns-pill {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d6c89a;
+  border-radius: 99px;
 }
