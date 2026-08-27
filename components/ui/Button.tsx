@@ -4,16 +4,11 @@ import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
 
 const variants = {
-  primary:
-    "bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm active:scale-[0.98]",
-  secondary:
-    "bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50 shadow-sm active:scale-[0.98]",
-  ghost:
-    "bg-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900",
-  danger:
-    "bg-red-600 text-white hover:bg-red-700 shadow-sm active:scale-[0.98]",
-  soft:
-    "bg-blue-50 text-blue-700 hover:bg-blue-100",
+  primary: "bg-pine text-pine-fg hover:opacity-90 shadow-sm active:scale-[0.98]",
+  secondary: "bg-card text-ink border border-line hover:bg-paper shadow-sm active:scale-[0.98]",
+  ghost: "bg-transparent text-muted hover:text-ink",
+  danger: "bg-danger-soft text-danger hover:opacity-90",
+  soft: "bg-pine-soft text-pine",
 } as const;
 
 const sizes = {
