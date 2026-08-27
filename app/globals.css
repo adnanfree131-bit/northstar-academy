@@ -2,6 +2,15 @@
 
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --text-caption: 0.75rem;
+  --text-label: 0.8125rem;
+  --text-body: 0.9375rem;
+  --text-title: 1.375rem;
+  --text-display: 1.75rem;
+  --color-faint: #9b978c;
+  --color-muted: #6f6c64;
+  --color-danger: #8b3a2a;
+  --color-warn: #8a5a22;
   --color-cream: #f7f1df;
   --color-cream-deep: #efe4c4;
   --color-ink: #171717;
