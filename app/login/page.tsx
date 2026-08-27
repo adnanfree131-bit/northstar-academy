@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, type Role } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 
 const demos: { role: Role; email: string; name: string }[] = [
-  { role: "principal", email: "principal@northstar.edu", name: "Principal" },
-  { role: "teacher", email: "teacher@northstar.edu", name: "Teacher" },
-  { role: "accountant", email: "accounts@northstar.edu", name: "Accountant" },
-  { role: "parent", email: "parent@northstar.edu", name: "Parent" },
+  { role: "principal", email: "principal@northstar.edu", name: "Nadia Rahman" },
+  { role: "teacher", email: "teacher@northstar.edu", name: "Farid Malik" },
+  { role: "accountant", email: "accounts@northstar.edu", name: "Hina Qureshi" },
+  { role: "parent", email: "parent@northstar.edu", name: "Imran Khan" },
 ];
 
 export default function LoginPage() {
@@ -34,64 +35,58 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="ns-shell flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-[420px]">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-900 text-white">
-            <span className="text-sm font-bold">NS</span>
-          </div>
-          <div>
-            <p className="text-base font-semibold tracking-tight text-zinc-900">Northstar Academy</p>
-            <p className="text-xs text-zinc-400">School operating system · 2025-26</p>
-          </div>
-        </div>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center bg-paper px-6 py-10">
+      <p className="text-label font-medium tracking-tight text-faint">Northstar Academy</p>
+      <h1 className="mt-2 text-display font-medium tracking-tight">Sign in</h1>
+      <p className="mt-2 text-body text-muted">Campus operations for 2025–26. Demo password is northstar.</p>
 
-        <div className="bezel">
-          <form onSubmit={submit} className="bezel-inner space-y-4 p-6">
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Sign in</h1>
-              <p className="mt-1 text-sm text-zinc-500">Demo auth. Password for every role is <span className="font-medium text-zinc-700">northstar</span>.</p>
-            </div>
-            <label className="block text-sm">
-              <span className="mb-1.5 block text-xs font-medium text-zinc-500">Email</span>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-300"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1.5 block text-xs font-medium text-zinc-500">Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-300"
-              />
-            </label>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button type="submit" className="w-full" loading={loading}>
-              Continue
-            </Button>
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              {demos.map((d) => (
-                <button
-                  key={d.role}
-                  type="button"
-                  onClick={() => {
-                    setEmail(d.email);
-                    setPassword("northstar");
-                  }}
-                  className="rounded-xl border border-zinc-200 px-3 py-2 text-left text-xs text-zinc-600 hover:bg-zinc-50"
-                >
-                  <span className="block font-medium text-zinc-900">{d.name}</span>
-                  {d.email}
-                </button>
-              ))}
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+      <form onSubmit={submit} className="mt-8 space-y-4">
+        <label className="block">
+          <span className="mb-1.5 block text-caption font-medium text-muted">Email</span>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 w-full rounded-md bg-card px-3 text-body shadow-[var(--shadow-card)] outline-none ring-pine focus:ring-2"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-caption font-medium text-muted">Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 w-full rounded-md bg-card px-3 text-body shadow-[var(--shadow-card)] outline-none ring-pine focus:ring-2"
+          />
+        </label>
+        {error ? <p className="text-label text-danger">{error}</p> : null}
+        <Button type="submit" loading={loading} className="h-11 w-full rounded-md bg-pine text-pine-fg hover:bg-pine">
+          Continue
+        </Button>
+      </form>
+
+      <ul className="mt-8 overflow-hidden rounded-xl bg-card shadow-[var(--shadow-card)]">
+        {demos.map((d) => (
+          <li key={d.role}>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail(d.email);
+                setPassword("northstar");
+              }}
+              className={cn(
+                "flex h-14 w-full items-center justify-between border-b border-line px-4 last:border-b-0",
+                email === d.email && "bg-pine-soft",
+              )}
+            >
+              <span>
+                <span className="block text-body font-medium">{d.name}</span>
+                <span className="text-caption capitalize text-muted">{d.role}</span>
+              </span>
+              <span className="text-caption text-faint">Use</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </main>
   );
 }
